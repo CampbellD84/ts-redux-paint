@@ -3,16 +3,26 @@ import { useSelector, useDispatch } from "react-redux"
 import { beginStroke, updateStroke, endStroke } from './actions';
 import { RootState } from "./types"
 import { drawStroke, clearCanvas, setCanvasSize } from './canvasUtils';
-import { currentStrokeSelector } from "./selectors"
 import { ColorPanel } from './ColorPanel';
+import { EditPanel } from "./EditPanel"
 
 const WIDTH = 1024
 const HEIGHT = 768
 
 const App = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const currentStroke = useSelector<RootState, RootState["currentStroke"]>(currentStrokeSelector)
-  const isDrawing = !!currentStroke.points.length
+  const isDrawing = useSelector<RootState>(
+    (state) => !!state.currentStroke.points.length
+  )
+  const historyIndex = useSelector<RootState, RootState["historyIndex"]>(
+    (state: RootState) => state.historyIndex
+  )
+  const strokes = useSelector<RootState, RootState["strokes"]>(
+    (state: RootState) => state.strokes
+  )
+  const currentStroke = useSelector<RootState, RootState["currentStroke"]>(
+    (state: RootState) => state.currentStroke
+  )
   const getCanvasWithContext = (canvas = canvasRef.current) => {
     return { canvas, context: canvas?.getContext("2d") }
   }
@@ -50,6 +60,20 @@ const App = () => {
 
   useEffect(() => {
     const { canvas, context } = getCanvasWithContext()
+    if (!context || !canvas) {
+      return
+    }
+    requestAnimationFrame(() => {
+      clearCanvas(canvas)
+
+      strokes.slice(0, strokes.length - historyIndex).forEach((stroke) => {
+        drawStroke(context, stroke.points, stroke.color)
+      })
+    })
+  })
+
+  useEffect(() => {
+    const { canvas, context } = getCanvasWithContext()
     if (!canvas || !context) {
       return
     }
@@ -72,6 +96,7 @@ const App = () => {
           <button aria-label="Close" />
         </div>
       </div>
+      <EditPanel />
       <ColorPanel />
       <canvas
         onMouseDown={startDrawing}
